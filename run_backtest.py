@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 
+from options_strategy_lab.heavy_ml import make_heavy_ml_filter_config, run_heavy_ml_credit_spread_backtest
 from options_strategy_lab.ml import make_simple_ml_filter_config, run_ml_credit_spread_backtest
 from options_strategy_lab.reports import save_backtest_artifacts
 from options_strategy_lab.strategies import (
@@ -18,14 +20,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run a backtest-first options strategy.")
     parser.add_argument(
         "--strategy",
-        choices=("credit_spread", "ml_credit_spread", "aggressive_long_call"),
+        choices=("credit_spread", "ml_credit_spread", "heavy_ml_credit_spread", "aggressive_long_call"),
         default="credit_spread",
         help="Which strategy to backtest.",
     )
     parser.add_argument("--start", default="2020-01-01", help="Backtest start date.")
     parser.add_argument("--end", default="2026-04-09", help="Backtest end date.")
     parser.add_argument("--initial-capital", type=float, default=100_000.0, help="Initial account equity.")
-    parser.add_argument("--output-dir", default="outputs", help="Directory for CSV and JSON artifacts.")
+    parser.add_argument("--output-dir", default="outputs2/outputs", help="Directory for CSV and JSON artifacts.")
     parser.add_argument("--symbol", default="SPY", help="Underlying symbol for the credit spread strategy.")
     parser.add_argument(
         "--preset",
@@ -38,6 +40,18 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("moderate", "aggressive"),
         default="aggressive",
         help="Simple ML filter preset for `ml_credit_spread`.",
+    )
+    parser.add_argument(
+        "--heavy-preset",
+        choices=("balanced", "aggressive", "cpu_max"),
+        default="aggressive",
+        help="CPU-heavy ensemble preset for `heavy_ml_credit_spread`.",
+    )
+    parser.add_argument(
+        "--cpu-workers",
+        type=int,
+        default=max(1, os.cpu_count() or 1),
+        help="CPU workers for the heavy ensemble models.",
     )
     parser.add_argument(
         "--risk-fraction",
@@ -76,6 +90,25 @@ def main() -> None:
             ml_config.base_risk_fraction = args.risk_fraction
         result = run_ml_credit_spread_backtest(strategy_config=strategy_config, ml_config=ml_config)
         result["strategy_name"] = f"ml_credit_spread_{args.ml_preset}"
+    elif args.strategy == "heavy_ml_credit_spread":
+        strategy_config = make_credit_spread_config(
+            preset="optimized",
+            symbol=args.symbol,
+            start=args.start,
+            end=args.end,
+            initial_capital=args.initial_capital,
+        )
+        heavy_config = make_heavy_ml_filter_config(
+            args.heavy_preset,
+            cpu_workers=args.cpu_workers,
+        )
+        if args.risk_fraction is not None:
+            heavy_config.base_risk_fraction = args.risk_fraction
+        result = run_heavy_ml_credit_spread_backtest(
+            strategy_config=strategy_config,
+            ml_config=heavy_config,
+        )
+        result["strategy_name"] = f"heavy_ml_credit_spread_{args.heavy_preset}"
     else:
         config = AggressiveLongCallBreakoutConfig(
             start=args.start,

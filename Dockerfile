@@ -16,11 +16,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends tini ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md run_backtest.py run_search.py ./
+COPY pyproject.toml README.md run_backtest.py run_search.py train_heavy_model.py ./
 COPY src ./src
 
 RUN python -m pip install --upgrade pip \
     && python -m pip install -e .
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["python", "run_search.py", "--workers", "1", "--batch-size", "8", "--max-candidates", "16"]
+CMD ["python", "train_heavy_model.py", "--cpu-workers", "1"]
