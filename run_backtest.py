@@ -4,8 +4,9 @@ import argparse
 import json
 import os
 
-from options_strategy_lab.heavy_ml import make_heavy_ml_filter_config, run_heavy_ml_credit_spread_backtest
+from options_strategy_lab.heavy_ml import make_heavy_ml_filter_config
 from options_strategy_lab.ml import make_simple_ml_filter_config, run_ml_credit_spread_backtest
+from options_strategy_lab.research_engine import HeavyCreditSpreadResearchEngine
 from options_strategy_lab.reports import save_backtest_artifacts
 from options_strategy_lab.strategies import (
     AggressiveLongCallBreakoutConfig,
@@ -104,11 +105,12 @@ def main() -> None:
         )
         if args.risk_fraction is not None:
             heavy_config.base_risk_fraction = args.risk_fraction
-        result = run_heavy_ml_credit_spread_backtest(
+        result = HeavyCreditSpreadResearchEngine(
             strategy_config=strategy_config,
             ml_config=heavy_config,
+        ).backtest(
+            strategy_name=f"heavy_ml_credit_spread_{args.heavy_preset}",
         )
-        result["strategy_name"] = f"heavy_ml_credit_spread_{args.heavy_preset}"
     else:
         config = AggressiveLongCallBreakoutConfig(
             start=args.start,

@@ -57,8 +57,7 @@ def make_simple_ml_filter_config(preset: str = "aggressive") -> SimpleMLFilterCo
     raise ValueError(msg)
 
 
-def _prepare_credit_spread_inputs(config: CreditSpreadConfig) -> dict[str, pd.Series | pd.DataFrame]:
-    price_data = fetch_price_history(config.symbol, config.start, config.end)
+def prepare_credit_spread_inputs_from_price_data(price_data: pd.DataFrame) -> dict[str, pd.Series | pd.DataFrame]:
     close = price_data["close"]
     return {
         "price_data": price_data,
@@ -72,6 +71,11 @@ def _prepare_credit_spread_inputs(config: CreditSpreadConfig) -> dict[str, pd.Se
         "ret10": close.pct_change(10),
         "ret20": close.pct_change(20),
     }
+
+
+def _prepare_credit_spread_inputs(config: CreditSpreadConfig) -> dict[str, pd.Series | pd.DataFrame]:
+    price_data = fetch_price_history(config.symbol, config.start, config.end)
+    return prepare_credit_spread_inputs_from_price_data(price_data)
 
 
 def _credit_spread_mark(

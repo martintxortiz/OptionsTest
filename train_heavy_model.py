@@ -4,11 +4,8 @@ import argparse
 import json
 import os
 
-from options_strategy_lab.heavy_ml import (
-    make_heavy_ml_filter_config,
-    run_heavy_ml_credit_spread_backtest,
-    train_heavy_credit_model,
-)
+from options_strategy_lab.heavy_ml import make_heavy_ml_filter_config
+from options_strategy_lab.research_engine import HeavyCreditSpreadResearchEngine
 from options_strategy_lab.reports import save_backtest_artifacts
 from options_strategy_lab.strategies import make_credit_spread_config
 
@@ -76,18 +73,19 @@ def main() -> None:
     if args.risk_fraction is not None:
         heavy_config.base_risk_fraction = args.risk_fraction
 
-    training_summary = train_heavy_credit_model(
+    engine = HeavyCreditSpreadResearchEngine(
         strategy_config=strategy_config,
         ml_config=heavy_config,
+    )
+    training_summary = engine.train(
         model_dir=args.model_dir,
         model_name=args.model_name,
     )
 
     result_summary: dict[str, object] = {"training": training_summary}
     if not args.skip_backtest:
-        backtest_result = run_heavy_ml_credit_spread_backtest(
-            strategy_config=strategy_config,
-            ml_config=heavy_config,
+        backtest_result = engine.backtest(
+            strategy_name=f"heavy_ml_credit_spread_{args.heavy_preset}",
         )
         strategy_name = f"heavy_ml_credit_spread_{args.heavy_preset}"
         save_backtest_artifacts(
@@ -100,6 +98,8 @@ def main() -> None:
         )
         result_summary["backtest_metrics"] = backtest_result["metrics"]
         result_summary["backtest_strategy_name"] = strategy_name
+        result_summary["backtest_tuned_threshold"] = engine.ml_config.probability_threshold
+        result_summary["backtest_tuned_recipe_name"] = engine.ml_config.walkforward_recipe_name
 
     print(json.dumps(result_summary, indent=2))
 

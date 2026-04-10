@@ -17,7 +17,13 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
-from .ml import _build_signal_candidates, _build_training_availability_map, _credit_spread_mark, _prepare_credit_spread_inputs
+from .ml import (
+    _build_signal_candidates,
+    _build_training_availability_map,
+    _credit_spread_mark,
+    _prepare_credit_spread_inputs,
+    prepare_credit_spread_inputs_from_price_data,
+)
 from .reports import build_metrics
 from .strategies import CreditSpreadConfig, _mark_iv, _realized_volatility, _rsi, make_credit_spread_config
 
@@ -263,11 +269,36 @@ def _heavy_model_recipes(config: HeavyMLFilterConfig) -> tuple[HeavyModelRecipe,
     )
 
 
+def prepare_heavy_candidates_from_price_data(
+    strategy_config: CreditSpreadConfig,
+    ml_config: HeavyMLFilterConfig,
+    price_data: pd.DataFrame,
+) -> tuple[dict[str, pd.Series | pd.DataFrame], pd.DataFrame]:
+    inputs = prepare_credit_spread_inputs_from_price_data(price_data)
+    return _prepare_heavy_candidates_from_inputs(
+        strategy_config=strategy_config,
+        ml_config=ml_config,
+        inputs=inputs,
+    )
+
+
 def _prepare_heavy_candidates(
     strategy_config: CreditSpreadConfig,
     ml_config: HeavyMLFilterConfig,
 ) -> tuple[dict[str, pd.Series | pd.DataFrame], pd.DataFrame]:
     inputs = _prepare_credit_spread_inputs(strategy_config)
+    return _prepare_heavy_candidates_from_inputs(
+        strategy_config=strategy_config,
+        ml_config=ml_config,
+        inputs=inputs,
+    )
+
+
+def _prepare_heavy_candidates_from_inputs(
+    strategy_config: CreditSpreadConfig,
+    ml_config: HeavyMLFilterConfig,
+    inputs: dict[str, pd.Series | pd.DataFrame],
+) -> tuple[dict[str, pd.Series | pd.DataFrame], pd.DataFrame]:
     candidates = _build_signal_candidates(
         config=strategy_config,
         inputs=inputs,
@@ -526,9 +557,13 @@ def _validation_objective(
 ) -> dict[str, float]:
     accepted = validation_frame.loc[probabilities >= threshold]
     accepted_count = int(len(accepted))
-    if accepted_count < min_validation_trades:
+    required_trades = min(
+        min_validation_trades,
+        max(6, int(np.ceil(len(validation_frame) * 0.20))),
+    )
+    if accepted_count < required_trades:
         return {
-            "score": -1_000_000.0 + accepted_count,
+            "score": -10_000.0 - (required_trades - accepted_count) * 250.0,
             "accepted_trade_count": accepted_count,
             "accepted_total_pnl": 0.0,
             "accepted_mean_pnl": 0.0,

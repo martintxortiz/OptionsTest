@@ -1,0 +1,25 @@
+{
+  "run_id": "gcp-search-001",
+  "updated_at_utc": "2026-04-09T14:44:44.089218+00:00",
+  "status": "running",
+  "processed_count": 8128,
+  "candidate_space": 32348160,
+  "target_candidates": 500000,
+  "remaining_to_target": 491872,
+  "target_progress_pct": 1.63,
+  "full_space_progress_pct": 0.03,
+  "checkpoint_db": "/app/outputs/search/strategy_search.sqlite",
+  "best_objective": {
+    "candidate_index": 4960,
+    "symbol": "SPY",
+    "family": "bull_put_credit_spread",
+    "signal": "bull_mean_reversion",
+    "objective_score": 34.5625,
+    "total_return_pct": 181.77,
+    "cagr_pct": 18.04,
+    "monthly_mean_return_pct": 1.42,
+    "max_drawdown_pct": -10.27,
+    "sharpe": 2.501,
+    "trade_count": 176
+  }
+}
